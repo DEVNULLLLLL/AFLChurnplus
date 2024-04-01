@@ -1088,12 +1088,15 @@ bool AFLCoverage::runOnModule(Module &M) {
       PrevLoc->setMetadata(NoSanMetaId, NoneMetaNode);
       Value *PrevLocCasted = IRB.CreateZExt(PrevLoc, IRB.getInt32Ty());
 
+      Value *ShiftAmount = IRB.getInt32(1);
+      Value *RightShiftedValue = IRB.CreateLShr(PrevLocCasted, ShiftAmount, "right shifted");
+
       /* Load SHM pointer */
       
       LoadInst *MapPtr = IRB.CreateLoad(AFLMapPtr);
       MapPtr->setMetadata(NoSanMetaId, NoneMetaNode);
       Value *MapPtrIdx =
-          IRB.CreateGEP(MapPtr, IRB.CreateXor(PrevLocCasted, CurLoc));
+          IRB.CreateGEP(MapPtr, IRB.CreateXor(RightShiftedValue, CurLoc));
 
       /* Update bitmap */
 
@@ -1107,7 +1110,7 @@ bool AFLCoverage::runOnModule(Module &M) {
       /* Set prev_loc to cur_loc >> 1 */
 
       StoreInst *Store =
-          IRB.CreateStore(ConstantInt::get(Int32Ty, cur_loc >> 1), AFLPrevLoc);
+          IRB.CreateStore(ConstantInt::get(Int32Ty, cur_loc), AFLPrevLoc);
       Store->setMetadata(NoSanMetaId, NoneMetaNode);
 
       /* insert age/churn into BBs */
